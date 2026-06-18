@@ -28,6 +28,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  ALGO_SETTINGS_PATH: '.AL-Go/settings.json'
   APPSOURCE_WORKFLOW: 'PublishToAppSource.yaml'
 
 jobs:
@@ -38,7 +39,45 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Checkout release
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Read settings.json as it was at the released tag.
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Check publish settings
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const settingsPath = process.env.ALGO_SETTINGS_PATH;
+
+            // Default: publish to AppSource. The setting is optional - when it is
+            // missing (or settings.json itself is missing) publishing is enabled.
+            let enabled = true;
+
+            if (fs.existsSync(settingsPath)) {
+              try {
+                const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                if (Object.prototype.hasOwnProperty.call(settings, 'tegosPublishToAppSourceEnabled')) {
+                  enabled = settings.tegosPublishToAppSourceEnabled === true;
+                }
+              } catch (err) {
+                core.warning(`Failed to parse '${settingsPath}': ${err.message}. Publishing stays enabled.`);
+              }
+            } else {
+              core.info(`'${settingsPath}' not found. Publishing stays enabled.`);
+            }
+
+            core.info(`Publish to AppSource enabled: ${enabled}`);
+            core.setOutput('enabled', String(enabled));
+            if (!enabled) {
+              core.notice("Publish to AppSource is disabled via 'tegosPublishToAppSourceEnabled' in .AL-Go/settings.json. Skipping.");
+            }
+
       - name: Trigger PublishToAppSource
+        if: ${{ steps.gate.outputs.enabled == 'true' }}
         uses: actions/github-script@v7
         env:
           # workflow_dispatch needs a branch/tag ref; the default branch is the

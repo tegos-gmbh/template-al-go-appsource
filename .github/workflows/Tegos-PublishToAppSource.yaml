@@ -1,22 +1,30 @@
 name: 'Tegos - Publish To AppSource'
-run-name: 'Tegos - Publish To AppSource (after Create release #${{ github.event.workflow_run.run_number }})'
+run-name: 'Tegos - Publish To AppSource (${{ github.event.release.tag_name }})'
 
-# Event-driven: this workflow reacts to the standard CreateRelease workflow
-# completing, so there is no polling and almost no extra Action minutes are
-# consumed.
+# Event-driven: this workflow reacts to a GitHub Release being published.
+#
+# Why 'release' and not 'workflow_run' on 'Create release':
+#   The 'Create release' workflow is dispatched (workflow_dispatch) by the
+#   'Tegos - Release' workflow using the default GITHUB_TOKEN. GitHub suppresses
+#   the cascading 'workflow_run: completed' event for any run that was triggered
+#   by GITHUB_TOKEN, so a downstream 'workflow_run' trigger never fires.
+#
+#   However, AL-Go's CreateRelease creates the GitHub Release using
+#   'TokenForPush' (the ghTokenWorkflow token, because we dispatch CreateRelease
+#   with useGhTokenWorkflow=true). Events produced by a non-GITHUB_TOKEN DO
+#   cascade, so the 'release' event fires reliably - we hook into that instead.
 on:
-  workflow_run:
-    workflows: [ 'Create release' ]   # must match the workflow name as stored by GitHub (leading/trailing whitespace is trimmed)
-    types: [ completed ]
+  release:
+    types: [ published ]
 
 # Dispatching the PublishToAppSource workflow requires write access to actions.
 permissions:
   actions: write
   contents: read
 
-# Avoid overlapping publish dispatches for the same source branch.
+# Avoid overlapping publish dispatches for the same release tag.
 concurrency:
-  group: tegos-publishtoappsource-${{ github.event.workflow_run.head_branch }}
+  group: tegos-publishtoappsource-${{ github.event.release.tag_name }}
   cancel-in-progress: false
 
 env:
@@ -25,21 +33,26 @@ env:
 jobs:
   publish-to-appsource:
     name: Publish to AppSource
-    # Only continue when the CreateRelease workflow actually succeeded.
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only publish full releases - never drafts or pre-releases.
+    if: ${{ github.event.release.draft == false && github.event.release.prerelease == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Trigger PublishToAppSource
         uses: actions/github-script@v7
         env:
-          TARGET_REF: ${{ github.event.workflow_run.head_branch }}
+          # workflow_dispatch needs a branch/tag ref; the default branch is the
+          # safe choice (the release commitish may be a bare SHA, which is not
+          # a valid dispatch ref).
+          TARGET_REF: ${{ github.event.repository.default_branch }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         with:
           script: |
             const workflowId = process.env.APPSOURCE_WORKFLOW;
             const ref = process.env.TARGET_REF;
+            const tag = process.env.RELEASE_TAG;
 
-            core.info(`Dispatching '${workflowId}' | appVersion='current' projects='*' GoLive=true ref='${ref}'`);
+            core.info(`Dispatching '${workflowId}' for release '${tag}' | appVersion='current' projects='*' GoLive=true ref='${ref}'`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -57,7 +70,8 @@ jobs:
               .addHeading('Publish to AppSource dispatched', 2)
               .addTable([
                 [{ data: 'Property', header: true }, { data: 'Value', header: true }],
-                ['Source branch', ref],
+                ['Release tag', tag],
+                ['Dispatch ref', ref],
                 ['App version to deliver', 'current'],
                 ['Projects to publish', '* (all)'],
                 ['Promote AppSource app to go live', 'yes'],

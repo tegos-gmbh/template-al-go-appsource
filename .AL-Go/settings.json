@@ -4,6 +4,7 @@
   "appFolders": [],
   "testFolders": [],
   "bcptTestFolders": [],
+  "CICDPushBranches": [  ],
   "tegosPeriodicUpdatesEnabled": true,
   "tegosReleaseEnabled": true
 }

@@ -76,6 +76,84 @@ jobs:
               core.notice("Publish to AppSource is disabled via 'tegosPublishToAppSourceEnabled' in .AL-Go/settings.json. Skipping.");
             }
 
+      # Guardrail: PublishToAppSource resolves appVersion='current' to the latest
+      # release and delivers whatever app packages are attached to it. The release
+      # tag (e.g. 28.10.0) is derived independently from the artifact version
+      # (e.g. app-master-Apps-28.9.12.0.zip), so a tag can point at binaries of a
+      # different version. We refuse to publish when the tag's Major.Minor does not
+      # match the Major.Minor of the app artifacts attached to the release.
+      - name: Validate release artifacts match tag
+        if: ${{ steps.gate.outputs.enabled == 'true' }}
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_ID: ${{ github.event.release.id }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            const releaseId = Number(process.env.RELEASE_ID);
+
+            // Derive Major.Minor from the release tag (tolerate an optional 'v' prefix).
+            const tagMatch = /^v?(\d+)\.(\d+)(?:\.|$)/.exec(tag || '');
+            if (!tagMatch) {
+              core.setFailed(`Release tag '${tag}' is not in the expected Major.Minor[.Build] format.`);
+              return;
+            }
+            const tagMajorMinor = `${tagMatch[1]}.${tagMatch[2]}`;
+            core.info(`Release tag '${tag}' -> Major.Minor '${tagMajorMinor}'`);
+
+            // Fetch the assets attached to the release (do not trust the event
+            // payload snapshot - list them via the API for an authoritative view).
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              per_page: 100,
+            });
+
+            // App artifact zips are named like '<project>-<branch>-Apps-<version>.zip'.
+            const appAssetRegex = /-Apps-(\d+\.\d+\.\d+(?:\.\d+)?)\.zip$/i;
+            const appAssets = assets
+              .map(a => ({ name: a.name, match: appAssetRegex.exec(a.name) }))
+              .filter(a => a.match);
+
+            if (appAssets.length === 0) {
+              core.setFailed(`No app artifact assets ('*-Apps-<version>.zip') found on release '${tag}'. Cannot validate the delivered version - refusing to publish.`);
+              return;
+            }
+
+            const rows = [];
+            const mismatches = [];
+            for (const asset of appAssets) {
+              const version = asset.match[1];
+              const versionMatch = /^(\d+)\.(\d+)/.exec(version);
+              const artifactMajorMinor = `${versionMatch[1]}.${versionMatch[2]}`;
+              const ok = artifactMajorMinor === tagMajorMinor;
+              rows.push([asset.name, version, ok ? 'OK' : 'MISMATCH']);
+              if (!ok) {
+                mismatches.push(`${asset.name} (artifact ${artifactMajorMinor} != tag ${tagMajorMinor})`);
+              }
+            }
+
+            await core.summary
+              .addHeading('Release artifact version check', 2)
+              .addTable([
+                [{ data: 'Asset', header: true }, { data: 'Artifact version', header: true }, { data: 'Result', header: true }],
+                ...rows,
+              ])
+              .write();
+
+            if (mismatches.length > 0) {
+              core.setFailed(
+                `Release '${tag}' contains app artifacts whose Major.Minor does not match the tag ` +
+                `(expected '${tagMajorMinor}'):\n- ${mismatches.join('\n- ')}\n` +
+                `Publishing to AppSource is blocked to avoid delivering the wrong version.`
+              );
+              return;
+            }
+
+            core.info(`All ${appAssets.length} app artifact(s) match the tag Major.Minor '${tagMajorMinor}'. Proceeding.`);
+
       - name: Trigger PublishToAppSource
         if: ${{ steps.gate.outputs.enabled == 'true' }}
         uses: actions/github-script@v7

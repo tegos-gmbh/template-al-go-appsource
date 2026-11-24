@@ -1,8 +1,8 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v10.0/.Modules/settings.schema.json",
+  "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v10.1/.Modules/settings.schema.json",
   "type": "AppSource App",
   "templateUrl": "https://github.com/microsoft/AL-Go-AppSource@main",
-  "templateSha": "2fe76ea957d364d5d7a7892fc4081404fa3a69b7",
+  "templateSha": "1a5d4484543edae6b26034dd9f1deacdc2708473",
   "customALGoFiles": {
     "filesToInclude": [
       {

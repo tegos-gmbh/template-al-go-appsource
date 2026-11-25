@@ -52,14 +52,24 @@ Structure:
 1. A short summary of the changes (2-4 sentences, flowing text).
 2. A blank line.
 3. The heading "## Release Notes" on its own line.
-4. A bullet list with customer- or consultant-relevant changes.
+4. A bullet list with customer- or consultant-relevant changes, if any.
+   Otherwise, leave the section empty without adding placeholder text.
+
+Write the Release Notes from the perspective of people who use
+or configure the product:
+
+- Describe what changed in the product, not how it was implemented.
+- For new or changed features, explain what users can now do or
+  how the affected business process changes.
+- For fixes, describe the visible problem that was corrected and
+  when it occurred, if known.
+- Mention required setup changes or compatibility impacts only
+  when supported by the diff.
+- If multiple products are affected, name the affected product
+  for each bullet when it is clear from the repository.
 
 Do not include technical internals in the Release Notes:
 no file names, object IDs or code details.
-
-If there are no customer-relevant changes, write exactly:
-
-- Keine kundenrelevanten Änderungen.
 
 When referring to objects, use the German caption translation
 from the XLIFF file if available.

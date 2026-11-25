@@ -3,6 +3,13 @@
   "type": "AppSource App",
   "templateUrl": "https://github.com/microsoft/AL-Go-AppSource@main",
   "templateSha": "1a5d4484543edae6b26034dd9f1deacdc2708473",
+  "CodeReviewAgent": {
+    "enabled": true,
+    "branches": ["master"],
+    "model": "gpt-6.2-sol",
+    "leafModel": "gpt-6-luna",
+    "excludedAuthors": []
+  },
   "customALGoFiles": {
     "filesToInclude": [
       {

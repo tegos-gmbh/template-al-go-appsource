@@ -6,8 +6,9 @@
   "customALGoFiles": {
     "filesToInclude": [
       {
-        "sourceFolder": ".github/workflows",
-        "filter": "pr-description.md"
+          "sourceFolder": ".github/workflows",
+          "filter": "pr-description.md",
+          "destinationFolder": ".github/workflows"
       },
       {
         "sourceFolder": ".github/skills/al-code-review",

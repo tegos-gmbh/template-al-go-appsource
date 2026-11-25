@@ -99,7 +99,6 @@ jobs:
         with:
           shell: pwsh
           phase: prepare
-          copilotCliVersion: 1.0.112
 
       - name: Setup BCQuality
         id: setup
@@ -114,7 +113,6 @@ jobs:
         with:
           shell: pwsh
           phase: generate
-          copilotCliVersion: 1.0.112
           token: ${{ github.token }}
           repository: ${{ github.repository }}
           prNumber: ${{ needs.prepare.outputs.prNumber }}

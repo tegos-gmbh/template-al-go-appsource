@@ -7,7 +7,6 @@
     "enabled": true,
     "branches": ["master"],
     "model": "gpt-6.2-sol",
-    "leafModel": "gpt-6-luna",
     "excludedAuthors": []
   },
   "customALGoFiles": {

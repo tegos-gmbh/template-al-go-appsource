@@ -5,7 +5,9 @@
   "templateSha": "1a5d4484543edae6b26034dd9f1deacdc2708473",
   "CodeReviewAgent": {
     "enabled": true,
-    "branches": ["master"],
+    "branches": [
+      "master"
+    ],
     "model": "gpt-6.2-sol",
     "leafModel": "gpt-6-luna",
     "excludedAuthors": []
@@ -13,9 +15,9 @@
   "customALGoFiles": {
     "filesToInclude": [
       {
-          "sourceFolder": ".github/workflows",
-          "filter": "pr-description.md",
-          "destinationFolder": ".github/workflows"
+        "sourceFolder": ".github/workflows",
+        "filter": "pr-description.md",
+        "destinationFolder": ".github/workflows"
       },
       {
         "sourceFolder": ".github/skills/al-code-review",
